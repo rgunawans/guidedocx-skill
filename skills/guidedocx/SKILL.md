@@ -13,13 +13,23 @@ Analyze a software repository or codebase and generate a crisp, professionally s
 
 ## Workflow
 
-### Step 1: Validate Target Codebase / Repository (Mandatory)
+### Step 1: Validate Target Codebase & Color Theme Preference (Mandatory)
 
-Before reading files or generating any documentation, verify whether the user has provided or specified the target repository, workspace path, or codebase archive.
+Before reading files or generating any documentation, verify two required inputs:
 
-- If no codebase, workspace context, or repository parameter is provided in the prompt or current workspace, **STOP immediately** and ask the user:
-  "Which codebase or repository would you like me to generate the `USER_GUIDE.docx` documentation for? Please provide the repository path, workspace folder, or upload the codebase bundle."
-- Do not guess, invent features, or generate placeholder documentation without a verified codebase.
+1. **Target Codebase / Repository**:
+   - If no codebase, workspace context, or repository parameter is provided in the prompt or current workspace, **STOP immediately** and ask the user:
+     "Which codebase or repository would you like me to generate the `USER_GUIDE.docx` documentation for? Please provide the repository path, workspace folder, or upload the codebase bundle."
+2. **DOCX Color Theme / Scheme**:
+   - Check if the user already specified a color theme or custom hex palette in their prompt.
+   - If no color theme was specified, **STOP and ask the user** to pick a theme before generating the file (listing the 5 curated palettes from `references/docx-style-spec.md`):
+     "Which color theme would you like for `USER_GUIDE.docx`?
+     1. **Corporate Cobalt** (`#1E3A8A`) - Enterprise SaaS, ERP & Admin Systems *(Default)*
+     2. **Slate & Steel** (`#0F172A`) - Cybersecurity, DevOps & Server Tools
+     3. **Emerald Operations** (`#065F46`) - Finance, Healthcare & Inventory/Logistics
+     4. **Deep Teal & Cyan** (`#115E59`) - IoT, Hardware Kiosks & Analytics
+     5. **Amber & Charcoal** (`#1F2937` / `#D97706`) - Mobile Scanners, Retail POS & Industrial
+     *(Or provide your own primary hex color code, e.g., `#2B579A`.)*"
 
 ### Step 2: Codebase Extraction, Anti-Hallucination & Anti-Slop Rules
 

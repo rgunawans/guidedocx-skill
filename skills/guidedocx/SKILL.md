@@ -51,13 +51,13 @@ Inspect UI views, forms, components, controllers/services, authorization rules, 
   - **Concrete Specifics Over Vagueness**: Replace vague advice (*"configure the appropriate settings"*) with exact field names and values extracted from the codebase.
 - **Flag Missing Context**: If a workflow depends on external configuration or incomplete code, mark it explicitly as `[NEEDS TEAM VERIFICATION]`.
 
-### Step 3: Screenshot Capture & Visual Evidence Policy
+### Step 3: Screenshot Capture & Visual Evidence Policy (Mandatory Visuals in Every Guide)
 
-Handle screenshots based on the detected application platform and environment capabilities:
+Every generated `USER_GUIDE.docx` **MUST include visual evidence** (either real captured screenshots OR styled `[SCREENSHOT: ...]` callout boxes—never omit visual blocks from the document):
 
-- **Web Applications (Live Browser Auto-Capture)**:
-  - When a web UI is running or startable locally and browser/Playwright capture tools are available, configure a fixed desktop viewport of **`1280x800`** (or `1366x768`).
-  - Capture **viewport-only** screenshots (`full_page=False`) by default so tall pages do not shrink to unreadable proportions inside Word margins. Only use `full_page=True` if total page height is under `1200px` (such as Login screens or compact forms).
+- **Web Applications (Proactive Live Browser Auto-Capture)**:
+  - When a web UI is running or startable locally (e.g., via `dotnet run`, `npm run dev`, or local URL), **actively attempt to launch or connect to it** and capture live screenshots using browser/Playwright tools (`pip install playwright` if needed).
+  - Configure a fixed desktop viewport of **`1280x800`** (or `1366x768`) and capture **viewport-only** screenshots (`full_page=False`) by default so tall pages do not shrink to unreadable proportions inside Word margins. Only use `full_page=True` if total page height is under `1200px` (such as Login screens or compact forms).
   - For modals, dialogs, or specific input cards, crop or focus on the relevant container so field labels remain crisp and legible.
   - Embed captured desktop images into `USER_GUIDE.docx` constrained to a maximum width of **`6.3` inches** while preserving aspect ratio, with a subtle `1 pt` `#CBD5E1` border.
 
@@ -67,8 +67,8 @@ Handle screenshots based on the detected application platform and environment ca
     "This project is detected as a mobile/Android application. Would you like me to start an Android Emulator to capture live screenshots (requires additional RAM/CPU and an active backend API), or proceed using `[SCREENSHOT: ...]` placeholders instead?"
   - If an active device is approved or emulator launch is confirmed, capture portrait screenshots (`adb exec-out screencap -p`) and embed them into `USER_GUIDE.docx` constrained to **`2.5` to `2.8` inches** wide (optionally arranged side-by-side in a borderless 2-column layout table) with a `1 pt` `#CBD5E1` border so vertical screens fit cleanly without overflowing pages.
 
-- **Safe Fallback to Placeholders**:
-  - Whenever an application cannot be launched locally (e.g., requires external SSO, physical barcode/printer hardware, or missing runtime secrets), no capture tool is available, or the user declines running an emulator, **do not fail or capture error screens**. Insert a styled callout placeholder formatted as `[SCREENSHOT: Specific description of the screen and UI elements to capture]`.
+- **Mandatory Placeholder Callout Boxes (When Live Capture Is Not Possible)**:
+  - Whenever an application cannot be launched locally (e.g., requires external SSO, physical barcode/printer hardware, or missing runtime secrets), no browser/device capture tool is available, or the user declines running an emulator, **you MUST still insert a styled left-bordered `[SCREENSHOT: ...]` callout box** at every major screen step (Login, Dashboard, and each Core Feature workflow) so the user knows the exact screens to capture and insert manually. Never silently skip screenshot blocks.
 
 ### Step 4: Document Structure (`USER_GUIDE.docx`)
 
@@ -78,8 +78,8 @@ Organize the Word document into the following sections (localizing all headings,
    - Application name (from project manifest/config), auto-detected application version, generation date, and target user roles.
    - Compact **Revision History** table (`Version`, `Date`, `Summary of Changes`, `Author`) immediately below Document Control so future updates remain traceable.
 2. **Chapter 1: Application Overview & User Access Matrix**: Concise operational scope (max 3-4 sentences) and a role-based access table mapping each user role to its responsibilities and accessible menus/features.
-3. **Chapter 2: Getting Started**: System/device prerequisites, initial setup or login/logout steps, and an overview of the main workspace (dashboard, navigation menu, status panels).
-4. **Chapter 3: Core Feature Guides (Step-by-Step)**: Grouped by end-to-end operational workflows. Each feature must include **Objective** (1 crisp sentence), **Prerequisites**, **Numbered Steps (1, 2, 3...)** with **bold** UI button and field names, and **Expected Result**, accompanied by either captured screenshots or `[SCREENSHOT: ...]` callout boxes.
+3. **Chapter 2: Getting Started**: System/device prerequisites, initial setup or login/logout steps, and an overview of the main workspace (dashboard, navigation menu, status panels), plus a Login/Dashboard screenshot or `[SCREENSHOT: ...]` callout box.
+4. **Chapter 3: Core Feature Guides (Step-by-Step)**: Grouped by end-to-end operational workflows. Each feature must include **Objective** (1 crisp sentence), **Prerequisites**, **Numbered Steps (1, 2, 3...)** with **bold** UI button and field names, **Expected Result**, and **at least one captured screenshot or `[SCREENSHOT: ...]` callout box**.
 5. **Chapter 4: Search, Filtering, Import & Report Export**: Instructions for searching records, applying filters, printing documents, and exporting reports (Excel, PDF, CSV) supported by the codebase.
 6. **Chapter 5: FAQ & Common Troubleshooting**: Real validation messages and error prompts extracted from the codebase paired with causes and practical end-user resolutions.
 
@@ -88,12 +88,13 @@ Organize the Word document into the following sections (localizing all headings,
 Read `references/docx-style-spec.md` for exact color codes, typography, and layout rules matching the selected theme:
 
 - Generate `USER_GUIDE.docx` in the selected project root directory using a Python script with `python-docx`.
-- Execute the Python script, verify `USER_GUIDE.docx` is created without errors, remove any temporary generator script and temporary raw screenshot files if embedded, and output a concise summary of generated chapters alongside any remaining screenshot placeholders to capture manually.
+- Execute the Python script, verify `USER_GUIDE.docx` is created without errors, remove any temporary generator script and temporary raw screenshot files if embedded, and output a concise summary of generated chapters alongside a list of all embedded screenshots or `[SCREENSHOT: ...]` placeholders included in the document.
 
 ## Gotchas
 
 - Never proceed to Step 2 until target project (including disambiguating multi-project folders), document language, and color theme are all confirmed.
 - Never start an Android Emulator without explicit user confirmation.
+- Never silently omit screenshots or `[SCREENSHOT: ...]` callout boxes from Chapter 2 and Chapter 3.
 - Never use `full_page=True` on long scrolling web pages, as the resulting vertical image shrinks illegibly when fitted into a `.docx` page.
 - Never pad chapters with generic AI prose; every paragraph must convey concrete UI behavior from the repository.
 - If `python-docx` is not installed in the active environment, install it via `pip install python-docx` before running the generator script.

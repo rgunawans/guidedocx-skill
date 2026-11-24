@@ -50,25 +50,86 @@ Inspect UI views, forms, components, controllers/services, authorization rules, 
   - **Zero Redundant Transitions**: Do not write filler paragraphs summarizing what a section is about to say or repeating what was just said. Jump straight to the steps, tables, or facts.
   - **Concrete Specifics Over Vagueness**: Replace vague advice (*"configure the appropriate settings"*) with exact field names and values extracted from the codebase.
 - **Flag Missing Context**: If a workflow depends on external configuration or incomplete code, mark it explicitly as `[NEEDS TEAM VERIFICATION]`.
+- **Detect App Type & Login Requirement** (feeds Step 3): Classify the project and note the entry point to launch it.
+
+  | Signal in repo | App type | Launch hint |
+  |---|---|---|
+  | `*.razor`, `Program.cs` with `AddRazorComponents`/`MapBlazorHub`, `wwwroot/` | Blazor Server / WebAssembly / Web App | `dotnet run` → URL from `Properties/launchSettings.json` |
+  | `*.cshtml`, MVC/Razor Pages, `package.json` with a `dev`/`start` script, Django/Flask/Laravel/Rails | Web | project dev command → local URL |
+  | `net*-windows*`, `.xaml` + `WPF`/`WinUI`/`UseWindowsForms` | Windows desktop (WPF, WinForms, WinUI) | `dotnet run` or built `.exe` |
+  | MAUI (`UseMaui`, `Platforms/`) | MAUI | Prefer the `-windows` target; `-android`/`-ios`/`-maccatalyst` per mobile rules |
+  | MAUI + `BlazorWebView` / `MauiProgram` with `AddMauiBlazorWebView` | Blazor Hybrid | Same as MAUI (Windows target first) |
+  | `electron` / `tauri.conf.json` | Electron / Tauri | `npm run start` / `npm run tauri dev` |
+  | `Avalonia`, Qt, JavaFX, Tkinter, PyQt | Other desktop | project run command |
+  | `pubspec.yaml` | Flutter | `flutter run -d chrome` / `-d windows` (cheaper) before `-d <emulator>` |
+  | `AndroidManifest.xml`, `android/` | Android | emulator rules in Step 3 |
+
+  Detect login: search for login pages/forms, `[Authorize]`, Identity/JWT/cookie auth, `AuthenticationStateProvider`, SSO/OIDC config (`AddOpenIdConnect`, `AzureAd`), seeded users (`HasData`, seeders, fixtures), and the connection string in `appsettings*.json` / `.env`.
 
 ### Step 3: Screenshot Capture & Visual Evidence Policy (Mandatory Visuals in Every Guide)
 
-Every generated `USER_GUIDE.docx` **MUST include visual evidence** (either real captured screenshots OR styled `[SCREENSHOT: ...]` callout boxes—never omit visual blocks from the document):
+Every generated `USER_GUIDE.docx` **MUST include visual evidence** (either real captured screenshots OR styled `[SCREENSHOT: ...]` callout boxes—never omit visual blocks from the document). Always try live capture first; fall back to placeholders only when capture is impossible or declined.
 
-- **Web Applications (Proactive Live Browser Auto-Capture)**:
-  - When a web UI is running or startable locally (e.g., via `dotnet run`, `npm run dev`, or local URL), **actively attempt to launch or connect to it** and capture live screenshots using browser/Playwright tools (`pip install playwright` if needed).
-  - Configure a fixed desktop viewport of **`1280x800`** (or `1366x768`) and capture **viewport-only** screenshots (`full_page=False`) by default so tall pages do not shrink to unreadable proportions inside Word margins. Only use `full_page=True` if total page height is under `1200px` (such as Login screens or compact forms).
-  - For modals, dialogs, or specific input cards, crop or focus on the relevant container so field labels remain crisp and legible.
-  - Embed captured desktop images into `USER_GUIDE.docx` constrained to a maximum width of **`6.3` inches** while preserving aspect ratio, with a subtle `1 pt` `#CBD5E1` border.
+#### 3.1 Resolve Login Before Launching (Ask Once, Only If a Login Exists)
+
+If the app requires sign-in and the user has not already supplied test credentials, **STOP and ask one concise message**:
+
+"The app requires login. How should I get past it for screenshots?
+1. **Dummy account** - create a dummy user in the local/dev database (or use a user already seeded by the repo).
+2. **Bypass login** - temporary, uncommitted dev-only bypass (auto sign-in as a test user), reverted afterwards.
+3. **Reset password** - set a known password on an existing user in the local/dev database; the original value is restored afterwards.
+4. **I provide credentials** - you give me a test account.
+5. **Placeholders only** - skip live capture; insert `[SCREENSHOT: ...]` callouts."
+
+Rules for each option:
+
+- **Safety gate (applies to options 1-3)**: Read the connection string / data source first. Proceed only if it points to `localhost`, `127.0.0.1`, `(localdb)`, a local file (SQLite), a local container, or a host whose name is clearly dev/test. If the target is production, shared, or unclear, **STOP and ask**; never write to it.
+- **Dummy account**: Prefer the repo's own seed data, seeder, or registration page. Otherwise create the user through the app's own hashing/registration code path (never store plaintext passwords the app would hash). Give the user a role matching each documented role if multiple roles must be shown. Generate the password yourself; record it in the project's seed/example-config file or tell the user to see it there, and **do not repeat it in chat or in `USER_GUIDE.docx`**.
+- **Bypass login**: Implement with the smallest change behind a dev-only flag (e.g., `ASPNETCORE_ENVIRONMENT=Development` + env var, auto-authenticated test principal, or a dev-only startup parameter). Keep it uncommitted: note the touched files, and revert via `git checkout -- <files>`/`git stash` after capture. Never leave it in the working tree.
+- **Reset password**: Save the original hash/value first (in the scratchpad/temp folder), set a new value using the app's hashing method, and **restore the original after capture**. Tell the user which user was changed.
+- **Dummy data for screenshots**: If tables are empty, add clearly fake records (e.g., "Contoh Pelanggan", "Test Item 001") via the UI or seeding. Do not capture real customer data, emails, tokens, or secrets; crop or blur if unavoidable.
+- **SSO/OIDC/MFA/CAPTCHA** that cannot run locally: do not attempt to bypass external identity providers or CAPTCHAs. Use Dummy/Bypass for the local app only if the app has a local auth path; otherwise use placeholders and mark `[NEEDS TEAM VERIFICATION]`.
+
+#### 3.2 Capture by App Type
+
+Use a fixed, repeatable window/viewport, take one screenshot per documented screen (Login, Dashboard, every Core Feature step), and name files in order (`01-login.png`, `02-dashboard.png`, ...). Work in a temp folder (scratchpad), never inside the repository.
+
+- **Web, Blazor Server/WebAssembly/Web App, MVC/Razor Pages, SPA (Proactive Live Browser Auto-Capture)**:
+  - Launch the app (`dotnet run`, `npm run dev`, etc.), wait until the URL responds, then capture with Playwright (`pip install playwright` + `playwright install chromium` if needed) or the available browser tools.
+  - Fixed desktop viewport **`1280x800`** (or `1366x768`), **viewport-only** (`full_page=False`) by default. Use `full_page=True` only if total page height is under `1200px` (Login, compact forms).
+  - For Blazor, wait for interactivity (`wait_for_selector` on a post-render element or `networkidle`) so the "Reconnecting"/loading overlay is not captured.
+  - For modals, dialogs, or specific cards, crop to the container so labels stay legible.
+  - Embed at a maximum width of **`6.3` inches**, preserving aspect ratio, with a `1 pt` `#CBD5E1` border.
+
+- **Windows Desktop (WPF, WinForms, WinUI, MAUI Windows, Blazor Hybrid on Windows, Avalonia, Qt, JavaFX)**:
+  - Prefer the **Windows target** for MAUI/Flutter apps because it needs no emulator.
+  - Build and launch (`dotnet run -f net*-windows10.0.19041.0`, built `.exe`, etc.), then capture **only the app window**, not the whole desktop:
+    1. **Preferred (scripted, repeatable)**: Python with `pywinauto` (find window by title/process, `set_focus`, `capture_as_image()`), or `pygetwindow` + `PIL.ImageGrab.grab(bbox=...)`. Install via `pip install pywinauto pillow` if missing. Use UI Automation (`pywinauto` `backend="uia"`) to click menus/buttons and fill fields by their exact labels.
+    2. **Alternative**: the computer-use tools (`request_access` for the app, then `screenshot`, `left_click`, `type`) when scripting cannot reach the controls.
+  - Set a consistent window size (e.g., `1280x800`), 100% display scaling if possible, and wait for the first render before capturing.
+  - Embed at a maximum width of **`6.3` inches** with a `1 pt` `#CBD5E1` border.
+  - Ask before launching if the app talks to physical hardware (printers, scanners, serial ports) or external production services.
+
+- **Electron / Tauri**: Launch with the project's dev command. For Electron, Playwright's `_electron.launch()` can screenshot the window directly; otherwise use the Windows Desktop method above.
+
+- **macOS / Linux Desktop**: Use `screencapture -l <windowid>` (macOS) or `import -window <id>` / `gnome-screenshot -w` (Linux) when the host OS matches; otherwise use placeholders.
 
 - **Mobile / Android Applications (Mandatory Emulator Confirmation)**:
-  - When the codebase is detected as a mobile/Android project (e.g., `.NET MAUI` / `net*-android`, `AndroidManifest.xml`, `pubspec.yaml`, or `android/`), first check if an active device or emulator is already connected (`adb devices`).
-  - If no device/emulator is currently running, **DO NOT launch an Android Emulator automatically** (as it consumes heavy RAM/CPU and may require active backend APIs or physical peripherals). **STOP and ask the user**:
-    "This project is detected as a mobile/Android application. Would you like me to start an Android Emulator to capture live screenshots (requires additional RAM/CPU and an active backend API), or proceed using `[SCREENSHOT: ...]` placeholders instead?"
-  - If an active device is approved or emulator launch is confirmed, capture portrait screenshots (`adb exec-out screencap -p`) and embed them into `USER_GUIDE.docx` constrained to **`2.5` to `2.8` inches** wide (optionally arranged side-by-side in a borderless 2-column layout table) with a `1 pt` `#CBD5E1` border so vertical screens fit cleanly without overflowing pages.
+  - When the codebase is a mobile project (`.NET MAUI` / `net*-android`, `AndroidManifest.xml`, `pubspec.yaml`, `android/`), first check for an active device or emulator (`adb devices`).
+  - If none is running, **DO NOT launch an Android Emulator automatically** (heavy RAM/CPU, may need an active backend API or physical peripherals). **STOP and ask the user**:
+    "This project is detected as a mobile/Android application. Would you like me to start an Android Emulator to capture live screenshots (requires additional RAM/CPU and an active backend API), capture the Windows/desktop/Web target instead if the project has one, or proceed using `[SCREENSHOT: ...]` placeholders?"
+  - If approved, capture portrait screenshots (`adb exec-out screencap -p`) and drive the UI with `adb shell input tap/text` or `uiautomator dump` to find elements by their labels. Embed at **`2.5` to `2.8` inches** wide (optionally side-by-side in a borderless 2-column table) with a `1 pt` `#CBD5E1` border.
+  - **iOS Simulator** (macOS only): `xcrun simctl io booted screenshot <file>`; same confirmation rule as the Android emulator.
 
 - **Mandatory Placeholder Callout Boxes (When Live Capture Is Not Possible)**:
-  - Whenever an application cannot be launched locally (e.g., requires external SSO, physical barcode/printer hardware, or missing runtime secrets), no browser/device capture tool is available, or the user declines running an emulator, **you MUST still insert a styled left-bordered `[SCREENSHOT: ...]` callout box** at every major screen step (Login, Dashboard, and each Core Feature workflow) so the user knows the exact screens to capture and insert manually. Never silently skip screenshot blocks.
+  - Whenever capture fails or is not possible (build errors, missing runtime secrets or backend, external SSO, physical hardware, no capture tool, or the user chose placeholders), **you MUST still insert a styled left-bordered `[SCREENSHOT: ...]` callout box** at every major screen step (Login, Dashboard, and each Core Feature workflow) describing the exact screen to capture manually. Never silently skip screenshot blocks.
+  - Mixing is allowed: embed real captures where they succeeded and use placeholders for the rest.
+
+#### 3.3 Capture Hygiene & Cleanup
+
+- Verify each image is not blank, not an error page, and shows the intended screen before embedding. Retry once, then fall back to a placeholder for that screen.
+- Never run destructive actions (delete, submit real payments, send emails) in the app just to get a screenshot; capture the confirmation dialog, then cancel.
+- After capture: stop every process you started (dev server, app window, emulator you started), revert login bypass changes, restore any reset password, and remove temporary dummy data/users you created unless the user asked to keep them. Report each of these in the final summary.
 
 ### Step 4: Document Structure (`USER_GUIDE.docx`)
 
@@ -83,17 +144,24 @@ Organize the Word document into the following sections (localizing all headings,
 5. **Chapter 4: Search, Filtering, Import & Report Export**: Instructions for searching records, applying filters, printing documents, and exporting reports (Excel, PDF, CSV) supported by the codebase.
 6. **Chapter 5: FAQ & Common Troubleshooting**: Real validation messages and error prompts extracted from the codebase paired with causes and practical end-user resolutions.
 
+Never write dummy/test credentials into the document; describe login steps with the field labels only (or `[credentials provided by your administrator]`).
+
 ### Step 5: DOCX Styling & Generation
 
 Read `references/docx-style-spec.md` for exact color codes, typography, and layout rules matching the selected theme:
 
 - Generate `USER_GUIDE.docx` in the selected project root directory using a Python script with `python-docx`.
-- Execute the Python script, verify `USER_GUIDE.docx` is created without errors, remove any temporary generator script and temporary raw screenshot files if embedded, and output a concise summary of generated chapters alongside a list of all embedded screenshots or `[SCREENSHOT: ...]` placeholders included in the document.
+- Execute the Python script, verify `USER_GUIDE.docx` is created without errors, remove any temporary generator script and temporary raw screenshot files if embedded, and output a concise summary of generated chapters alongside a list of all embedded screenshots and `[SCREENSHOT: ...]` placeholders, the login method used (if any), and the temporary changes that were reverted.
 
 ## Gotchas
 
 - Never proceed to Step 2 until target project (including disambiguating multi-project folders), document language, and color theme are all confirmed.
-- Never start an Android Emulator without explicit user confirmation.
+- Never start an Android Emulator or iOS Simulator without explicit user confirmation.
+- Never modify, seed, or reset a database unless the connection string is verified as local/dev; if unsure, ask.
+- Never commit login bypass code, dummy users' credentials, or temporary seed changes; always revert/restore and report it.
+- Never put passwords or tokens in chat output or in `USER_GUIDE.docx`.
+- Never try to bypass external SSO, MFA, or CAPTCHA; use placeholders instead.
+- Never capture the full desktop when a single app window is the target; crop to the app window.
 - Never silently omit screenshots or `[SCREENSHOT: ...]` callout boxes from Chapter 2 and Chapter 3.
 - Never use `full_page=True` on long scrolling web pages, as the resulting vertical image shrinks illegibly when fitted into a `.docx` page.
 - Never pad chapters with generic AI prose; every paragraph must convey concrete UI behavior from the repository.

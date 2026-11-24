@@ -90,6 +90,23 @@ Rules for each option:
 - **Dummy data for screenshots**: If tables are empty, add clearly fake records (e.g., "Contoh Pelanggan", "Test Item 001") via the UI or seeding. Do not capture real customer data, emails, tokens, or secrets; crop or blur if unavoidable.
 - **SSO/OIDC/MFA/CAPTCHA** that cannot run locally: do not attempt to bypass external identity providers or CAPTCHAs. Use Dummy/Bypass for the local app only if the app has a local auth path; otherwise use placeholders and mark `[NEEDS TEAM VERIFICATION]`.
 
+#### 3.1b Choose the Data Source for Capture (Ask Together With Login)
+
+Screens need data to look real. If the app uses a database or backend API, include this question in the same message as the login question (or alone if no login exists):
+
+"Which data source should the app use while capturing screenshots?
+1. **Local/dev database** *(default)* - use the existing local/dev DB with a few fake records added.
+2. **Isolated capture database** - a throwaway SQLite / EF InMemory / local container DB seeded only for screenshots; your dev DB stays untouched.
+3. **JSON file data** - fake data loaded from a JSON file through a temporary stub (only possible when the app has a repository/service/API-client abstraction)."
+
+Guidance for choosing and executing:
+
+- **Recommend** option 1 when the connection string is verified local/dev and already holds usable data; option 2 when the DB is shared, empty, or the schema can be created from migrations/seeders; option 3 only when the data layer is behind an interface or HTTP API client and swapping it is a small change (register a `Json*Repository`/mock handler in Development only). If swapping needs more than a handful of files, fall back to option 2 or 1 and say why.
+- **Option 2 (isolated DB)**: create it in the temp/scratchpad folder, apply migrations or schema scripts, then seed fake records. Point the app to it through an environment variable or `appsettings.Development.json` override, not by editing committed config.
+- **Option 3 (JSON)**: place the JSON fixture in the temp folder, not the repo. Cover every screen being documented (lists, details, empty states, validation errors). Only data reads need to work; writes may be no-ops.
+- Login options in 3.1 still apply when the app has authentication (with option 2 and 3 the dummy user lives in the capture data, so no real DB is modified).
+- All overrides are temporary: keep them uncommitted, revert after capture, delete the temp DB/JSON files, and list them in the final summary.
+
 #### 3.2 Capture by App Type
 
 Use a fixed, repeatable window/viewport, take one screenshot per documented screen (Login, Dashboard, every Core Feature step), and name files in order (`01-login.png`, `02-dashboard.png`, ...). Work in a temp folder (scratchpad), never inside the repository.
@@ -157,6 +174,7 @@ Read `references/docx-style-spec.md` for exact color codes, typography, and layo
 
 - Never proceed to Step 2 until target project (including disambiguating multi-project folders), document language, and color theme are all confirmed.
 - Never start an Android Emulator or iOS Simulator without explicit user confirmation.
+- Never assume the data source; ask whether to use the local/dev DB, an isolated capture DB, or JSON file data when the app depends on data.
 - Never modify, seed, or reset a database unless the connection string is verified as local/dev; if unsure, ask.
 - Never commit login bypass code, dummy users' credentials, or temporary seed changes; always revert/restore and report it.
 - Never put passwords or tokens in chat output or in `USER_GUIDE.docx`.

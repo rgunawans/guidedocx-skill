@@ -14,36 +14,39 @@ Analyze a software repository or codebase and generate a crisp, professionally s
 
 ## Workflow
 
-### Step 1: Validate Target Codebase & Color Theme Preference (Mandatory)
+### Step 1: Validate Target Project, Output Language & Color Theme (Mandatory)
 
-Before reading files or generating any documentation, verify two required inputs:
+Before reading files or generating any documentation, verify three required inputs:
 
-1. **Target Codebase / Repository**:
-   - If no codebase, workspace context, or repository parameter is provided in the prompt or current workspace, **STOP immediately** and ask the user:
-     "Which codebase or repository would you like me to generate the `USER_GUIDE.docx` documentation for? Please provide the repository path, workspace folder, or upload the codebase bundle."
-2. **DOCX Color Theme / Scheme**:
-   - Check if the user already specified a color theme or custom hex palette in their prompt.
-   - If no color theme was specified, **STOP and ask the user** to pick a theme before generating the file (listing the 5 curated palettes from `references/docx-style-spec.md`):
-     "Which color theme would you like for `USER_GUIDE.docx`?
+1. **Target Codebase / Project Selection**:
+   - If no codebase, workspace context, or repository parameter is provided, **STOP immediately** and ask which codebase or repository to document.
+   - **Multi-Project / Monorepo Detection**: If the workspace or root directory contains multiple distinct project folders, solutions, or apps (e.g., separate `.csproj` apps, `packages/*`, `apps/*`, or multiple subfolders with their own manifests), **DO NOT guess or merge them blindly**. List the detected project folders and ask the user:
+     "Multiple projects were detected in this workspace: [list detected folders/projects]. Which specific project folder would you like me to generate `USER_GUIDE.docx` for (or should I cover a specific combination)?"
+2. **Document Output Language**:
+   - Check if the user already specified the language for `USER_GUIDE.docx`.
+   - If not specified, **STOP and ask the user** which language the document should be written in (offering **English**, **Bahasa Indonesia**, or **any custom language** the user specifies—while always preserving exact UI button/menu text from the source code).
+3. **DOCX Color Theme / Scheme**:
+   - Check if the user already specified a color theme or custom hex palette.
+   - If not specified, **STOP and ask the user** to pick a theme before generating the file (listing the 5 curated palettes from `references/docx-style-spec.md`):
      1. **Corporate Cobalt** (`#1E3A8A`) - Enterprise SaaS, ERP & Admin Systems *(Default)*
      2. **Slate & Steel** (`#0F172A`) - Cybersecurity, DevOps & Server Tools
      3. **Emerald Operations** (`#065F46`) - Finance, Healthcare & Inventory/Logistics
      4. **Deep Teal & Cyan** (`#115E59`) - IoT, Hardware Kiosks & Analytics
      5. **Amber & Charcoal** (`#1F2937` / `#D97706`) - Mobile Scanners, Retail POS & Industrial
-     *(Or provide your own primary hex color code, e.g., `#2B579A`.)*"
+     *(Or provide a custom primary hex color code, e.g., `#2B579A`.)*
 
-*(Note: If both the codebase and theme are missing, ask both questions together in a single concise message.)*
+*(Important: Consolidate all missing questions into **one single concise message** so the user can answer target project, language, and color theme together in one reply.)*
 
 ### Step 2: Codebase Extraction, Versioning & Anti-Hallucination Rules
 
 Inspect UI views, forms, components, controllers/services, authorization rules, and configuration files thoroughly while enforcing strict grounding and concise technical writing:
 
 - **Auto-Detect Application Version**: Extract the application version directly from project manifests or version sources (such as `<Version>` in `.csproj`, `"version"` in `package.json`, `version:` in `pubspec.yaml`, `AssemblyInfo`, or latest Git tag). Use `v1.0.0` only if no version metadata exists in the repository.
-- **Exact UI Labels**: Use the exact menu names, button labels, tab titles, input field labels, and validation messages found in the UI source code. Never invent UI elements.
-- **End-User Language**: Write in direct operational language. Exclude code snippets, internal class names, SQL table names, and backend architecture jargon unless they explicitly appear on the user interface.
+- **Exact UI Labels**: Use the exact menu names, button labels, tab titles, input field labels, and validation messages found in the UI source code—even when writing narrative prose in another language, keep UI labels verbatim (or show `Exact UI Label (Translated Hint)` if helpful). Never invent UI elements.
+- **End-User Language**: Write in direct operational language matching the user's chosen document language. Exclude code snippets, internal class names, SQL table names, and backend architecture jargon unless they explicitly appear on the user interface.
 - **Strict Anti-Slop Writing Rules**:
-  - **Ban AI Filler & Marketing Fluff**: Never use empty corporate superlatives or generic AI phrases such as *"seamlessly"*, *"empower"*, *"streamline"*, *"robust"*, *"cutting-edge"*, *"intuitive"*, *"delve into"*, *"in today's fast-paced..."*, *"let's explore"*, or *"harness the power of"*.
-  - **Action-First Sentences**: Start every instruction with a concrete imperative verb (*Click*, *Select*, *Enter*, *Verify*, *Download*) and state exact screen outcomes instead of abstract benefits.
+  - **Ban AI Filler & Marketing Fluff**: Never use empty corporate superlatives or generic AI phrases in any language (such as *"seamlessly"*, *"empower"*, *"streamline"*, *"robust"*, *"cutting-edge"*, *"intuitive"*, *"delve into"*, *"secara mulus"*, *"memberdayakan"*, *"solusi canggih"*, or *"di era digital yang serba cepat"*).
+  - **Action-First Sentences**: Start every instruction with a concrete imperative verb (*Click / Klik*, *Select / Pilih*, *Enter / Masukkan*, *Verify / Periksa*, *Download / Unduh*) and state exact screen outcomes instead of abstract benefits.
   - **Zero Redundant Transitions**: Do not write filler paragraphs summarizing what a section is about to say or repeating what was just said. Jump straight to the steps, tables, or facts.
   - **Concrete Specifics Over Vagueness**: Replace vague advice (*"configure the appropriate settings"*) with exact field names and values extracted from the codebase.
 - **Flag Missing Context**: If a workflow depends on external configuration or incomplete code, mark it explicitly as `[NEEDS TEAM VERIFICATION]`.
@@ -69,7 +72,7 @@ Handle screenshots based on the detected application platform and environment ca
 
 ### Step 4: Document Structure (`USER_GUIDE.docx`)
 
-Organize the Word document into the following sections:
+Organize the Word document into the following sections (localizing all headings, table headers, and callout titles into the user's chosen document language):
 
 1. **Title Banner, Document Control & Revision History Table**:
    - Application name (from project manifest/config), auto-detected application version, generation date, and target user roles.
@@ -84,12 +87,12 @@ Organize the Word document into the following sections:
 
 Read `references/docx-style-spec.md` for exact color codes, typography, and layout rules matching the selected theme:
 
-- Generate `USER_GUIDE.docx` in the project root directory using a Python script with `python-docx`.
+- Generate `USER_GUIDE.docx` in the selected project root directory using a Python script with `python-docx`.
 - Execute the Python script, verify `USER_GUIDE.docx` is created without errors, remove any temporary generator script and temporary raw screenshot files if embedded, and output a concise summary of generated chapters alongside any remaining screenshot placeholders to capture manually.
 
 ## Gotchas
 
-- Never proceed to Step 2 if the target repository is unspecified OR if the user has not yet confirmed a color theme.
+- Never proceed to Step 2 until target project (including disambiguating multi-project folders), document language, and color theme are all confirmed.
 - Never start an Android Emulator without explicit user confirmation.
 - Never use `full_page=True` on long scrolling web pages, as the resulting vertical image shrinks illegibly when fitted into a `.docx` page.
 - Never pad chapters with generic AI prose; every paragraph must convey concrete UI behavior from the repository.
